@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Volleyball Hearts</title>
+  <style>
+    :root {
+      --bg-1: #071a25;
+      --bg-2: #0d2a3d;
+      --panel: rgba(12, 22, 28, 0.88);
+      --panel-strong: rgba(9, 16, 22, 0.96);
+      --line: rgba(255,255,255,0.12);
+      --text: #edf7ff;
+      --muted: rgba(237,247,255,0.72);
+      --cyan: #7cecff;
+      --cyan-2: #8afad8;
+      --gold: #ffd166;
+      --rose: #ff6fa6;
+      --red: #ff6b6b;
+      --green: #80f7a3;
+      --shadow: rgba(0,0,0,0.45);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      font-family: Inter, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1a3a4f 0%, var(--bg-1) 38%, #020b12 100%);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .game-shell {
+      position: relative;
+      width: min(1280px, 96vw);
+      height: min(760px, 92vh);
+      border-radius: 22px;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(19, 31, 38, 0.72), rgba(7, 14, 20, 0.9));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.55), 0 0 40px rgba(124,236,255,0.14);
+    }
+
+    #gameCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: linear-gradient(180deg, #184d69 0%, #195b60 52%, #103f43 100%);
+    }
+
+    .hud {
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 102px;
+      padding: 12px 18px 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      z-index: 10;
+      background: linear-gradient(180deg, rgba(6,13,17,0.75), rgba(6,13,17,0));
+      pointer-events: none;
+    }
+
+    .hud-block {
+      min-width: 180px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+      text-align: center;
+    }
+
+    .hud-block.left { align-items: flex-start; }
+    .hud-block.right { align-items: flex-end; }
+
+    .tiny {
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-size: 10px;
+      color: var(--cyan);
+      font-weight: 800;
+      opacity: 0.9;
+    }
+
+    .player-name {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .score {
+      font-size: 38px;
+      font-weight: 900;
+      line-height: 1;
+      color: var(--gold);
+    }
+
+    .score.player { color: var(--green); }
+    .score.ai { color: var(--red); }
+
+    .center-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-width: 180px;
+      flex: 1;
+    }
+
+    .status-pill {
+      background: rgba(124,236,255,0.12);
+      border: 1px solid rgba(124,236,255,0.38);
+      color: var(--cyan);
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      font-weight: 800;
+      box-shadow: 0 0 18px rgba(124,236,255,0.12);
+    }
+
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+
+    .connection-label {
+      color: var(--rose);
+      font-size: 10px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    .hearts {
+      display: flex;
+      gap: 3px;
+      align-items: center;
+      justify-content: center;
+      min-width: 96px;
+    }
+
+    .heart {
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      transform: translateY(-1px);
+    }
+
+    .heart.filled {
+      color: var(--rose);
+      text-shadow: 0 0 10px rgba(255,111,166,0.7);
+    }
+
+    .panel {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2,8,12,0.40);
+      backdrop-filter: blur(4px);
+    }
+
+    .panel.hidden { display: none; }
+
+    .card {
+      width: min(700px, 88%);
+      background: rgba(12,22,28,0.9);
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 28px 70px rgba(0,0,0,0.52);
+      padding: 30px 30px 26px;
+    }
+
+    .title {
+      margin: 0 0 12px;
+      padding: 0;
+      text-align: center;
+      font-size: clamp(28px, 5vw, 52px);
+      letter-spacing: 1px;
+      font-weight: 900;
+      color: var(--text);
+    }
+
+    .subtitle {
+      margin: 0 auto 18px;
+      max-width: 620px;
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    .story-box {
+      margin: 18px 0;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 16px 18px;
+      text-align: center;
+      line-height: 1.7;
+      color: rgba(237,247,255,0.8);
+    }
+
+    .story-box strong {
+      color: var(--cyan);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px 16px;
+      margin: 18px 0 6px;
+      color: rgba(237,247,255,0.82);
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      box-shadow: inset 0 -5px 0 rgba(255,255,255,0.04);
+      color: var(--text);
+      font-weight: 900;
+      font-size: 12px;
+      margin-left: 2px;
+      margin-right: 2px;
+    }
+
+    .campaign-box {
+      margin-top: 18px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 12px 14px 14px;
+    }
+
+    .campaign-label {
+      margin-bottom: 10px;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(237,247,255,0.7);
+      font-weight: 800;
+    }
+
+    .campaign-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .matchup {
+      padding: 8px 11px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(237,247,255,0.66);
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0.72;
+    }
+
+    .matchup.active {
+      background: rgba(124,236,255,0.12);
+      border-color: rgba(124,236,255,0.4);
+      color: var(--text);
+      opacity: 1;
+      box-shadow: 0 0 20px rgba(124,236,255,0.10);
+    }
+
+    .matchup.complete {
+      background: rgba(128,247,163,0.10);
+      border-color: rgba(128,247,163,0.32);
+      color: var(--green);
+      opacity: 1;
+    }
+
+    .matchup.locked {
+      opacity: 0.42;
+    }
+
+    .cta-row {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 22px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 15px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--cyan), var(--cyan-2));
+      color: #052431;
+      box-shadow: 0 16px 26px rgba(124,236,255,0.24);
+      border: none;
+    }
+
+    .danger {
+      background: rgba(255,107,107,0.1);
+      border: 1px solid rgba(255,107,107,0.28);
+      color: #ffb4b4;
+    }
+
+    .result-header {
+      text-align: center;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+
+    .result-header.victory { color: var(--green); }
+    .result-header.defeat { color: var(--red); }
+    .result-header.romance { color: var(--rose); }
+
+    .smol {
+      font-size: 12px;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-shell">
+    <div class="hud">
+      <div class="hud-block left">
+        <div class="tiny">You</div>
+        <div class="player-name" id="playerName">Nova</div>
+        <div class="score player" id="playerScore">0</div>
+      </div>
+
+      <div class="center-stack">
+        <div class="status-pill" id="statusText">Serve</div>
+        <div class="connection" id="connectionBox">
+          <div class="connection-label">Connection</div>
+          <div class="hearts" id="hearts"></div>
+        </div>
+      </div>
+
+      <div class="hud-block right">
+        <div class="tiny" id="opponentLabel">Opponent</div>
+        <div class="player-name" id="opponentName">Rival</div>
+        <div class="score ai" id="opponentScore">0</div>
+      </div>
+    </div>
+
+    <canvas id="gameCanvas" width="1280" height="720"></canvas>
+
+    <div class="panel" id="startPanel">
+      <div class="card">
+        <h1 class="title">Volleyball Hearts</h1>
+        <p class="subtitle">A sideways 2D beach-volley romance campaign: master your spikes, win rallies, and grow a connection with each rival.</p>
+
+        <div class="controls">
+          <span><span class="key">A</span>/<span class="key">D</span> Move</span>
+          <span><span class="key">W</span> Jump</span>
+          <span><span class="key">Space</span> Charge Spike</span>
+          <span><span class="key">R</span> Restart</span>
+        </div>
+
+        <div class="campaign-box">
+          <div class="campaign-label">Campaign Road</div>
+          <div class="campaign-list" id="campaignList"></div>
+        </div>
+
+        <div class="cta-row">
+          <button class="primary" id="startButton">Start Campaign</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel hidden" id="resultPanel">
+      <div class="card">
+        <div class="result-header" id="resultHeader">Match complete</div>
+        <h2 class="title" id="resultTitle" style="font-size: clamp(24px, 4vw, 36px); margin-bottom: 8px;">Round Result</h2>
+        <p class="subtitle" id="resultText">You won.</p>
+        <div class="story-box" id="storyBox"></div>
+        <div class="cta-row">
+          <button class="primary" id="nextButton">Continue</button>
+          <button class="danger" id="retryButton">Retry</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel hidden" id="endingPanel">
+      <div class="card">
+        <div class="result-header romance">Finale</div>
+        <h2 class="title" id="endingTitle" style="font-size: clamp(24px, 4vw, 36px); margin-bottom: 10px;">League Champion</h2>
+        <p class="subtitle" id="endingText">You completed the season.</p>
+        <div class="story-box" id="endingStory"></div>
+        <div class="cta-row">
+          <button class="primary" id="restartButton">Play Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const startPanel = document.getElementById('startPanel');
+    const resultPanel = document.getElementById('resultPanel');
+    const endingPanel = document.getElementById('endingPanel');
+    const playerScoreEl = document.getElementById('playerScore');
+    const opponentScoreEl = document.getElementById('opponentScore');
+    const playerNameEl = document.getElementById('playerName');
+    const opponentNameEl = document.getElementById('opponentName');
+    const statusTextEl = document.getElementById('statusText');
+    const heartsEl = document.getElementById('hearts');
+    const connectionBox = document.getElementById('connectionBox');
+    const opponentLabelEl = document.getElementById('opponentLabel');
+    const campaignListEl = document.getElementById('campaignList');
+    const resultHeaderEl = document.getElementById('resultHeader');
+    const resultTitleEl = document.getElementById('resultTitle');
+    const resultTextEl = document.getElementById('resultText');
+    const storyBoxEl = document.getElementById('storyBox');
+    const endingTitleEl = document.getElementById('endingTitle');
+    const endingTextEl = document.getElementById('endingText');
+    const endingStoryEl = document.getElementById('endingStory');
+
+    const keys = {};
+
+    const campaign = [
+      {
+        name: 'Mira',
+        role: 'Setter',
+        difficulty: 1.0,
+        color: '#7cecff',
+        open: 'Mira smiles at you while setting the ball. Something about their focus feels warm and dangerous.',
+        win: 'Mira laughs softly in the post-match haze. “You’re really something,” they murmur, and it feels like a confession.',
+        loss: 'Mira helps you up and says, “You play beautifully. I want a rematch.” The words settle in your chest like a spark.'
+      },
+      {
+        name: 'Jules',
+        role: 'Middle Blocker',
+        difficulty: 1.35,
+        color: '#8afad8',
+        open: 'Jules blocks the net with brutal precision, and you can’t stop noticing how they look when they win.',
+        win: 'Jules stands close after the match, their breath warm against your ear. “I didn’t think you’d be this intoxicating to play against.”',
+        loss: 'Jules catches your wrist gently as you leave. “You should stay longer,” they say, eyes honest and shy.'
+      },
+      {
+        name: 'Rei',
+        role: 'Outside Hitter',
+        difficulty: 1.7,
+        color: '#ffd166',
+        open: 'Rei’s style is fierce and electrifying. Every spike cuts through the air like a challenge to your heart.',
+        win: 'Rei grins, cheeks pink. “I think I’ve been falling for your timing.” The compliment lands like a thunderclap.',
+        loss: 'Rei leans close after the final point. “I think I lost because I was looking at you too much.”'
+      },
+      {
+        name: 'Ari',
+        role: 'Libero',
+        difficulty: 2.05,
+        color: '#ff8ca8',
+        open: 'Ari is all quiet confidence and sharp reflexes. Their protective instincts on court make your pulse jump.',
+        win: 'Ari never breaks eye contact. “I didn’t know I could want someone this much while competing,” they whisper.',
+        loss: 'Ari stays beside you in the locker room, low voice warm and unguarded. “We should talk after this.”'
+      },
+      {
+        name: 'Sage',
+        role: 'Captain',
+        difficulty: 2.5,
+        color: '#d7a8ff',
+        open: 'Sage is the kind of opponent who makes every rally feel like a duel. Your chemistry is impossible to ignore.',
+        win: 'Sage says your name like a vow. “I’m not sure whether I wanted to beat you or kiss you.”',
+        loss: 'Sage takes your hand as the crowd cheers. “Maybe I was trying to hide how much I liked you.”'
+      }
+    ];
+
+    const world = {
+      rounds: campaign.length,
+      roundIndex: 0,
+      playerScore: 0,
+      opponentScore: 0,
+      matchPoint: 5,
+      playerWon: false,
+      romance: new Array(campaign.length).fill(0),
+      currentRomance: 0,
+      gameActive: false,
+      state: 'title'
+    };
+
+    const player = {
+      x: 230,
+      y: 460,
+      w: 34,
+      h: 62,
+      vx: 0,
+      vy: 0,
+      speed: 5.1,
+      jumpPower: 12.8,
+      onGround: true,
+      color: '#80f7a3',
+      facing: 1,
+      charge: 0,
+      maxCharge: 70,
+      spikeReady: false
+    };
+
+    const ai = {
+      x: 1050,
+      y: 460,
+      w: 34,
+      h: 62,
+      vx: 0,
+      vy: 0,
+      speed: 4.1,
+      jumpPower: 12.2,
+      onGround: true,
+      color: '#ff6b6b',
+      facing: -1,
+      charge: 0,
+      maxCharge: 70,
+      role: 'ai'
+    };
+
+    const ball = {
+      x: 640,
+      y: 250,
+      r: 12,
+      vx: 0,
+      vy: 0,
+      inAir: false,
+      owner: null,
+      lastHit: null,
+      trail: [],
+      spin: 0
+    };
+
+    const net = { x: 640, y: 200, h: 250 };
+
+    function buildCampaignList() {
+      campaignListEl.innerHTML = '';
+      campaign.forEach((opp, idx) => {
+        const div = document.createElement('div');
+        let cls = 'matchup';
+        if (idx === world.roundIndex) cls += ' active';
+        else if (idx < world.roundIndex) cls += ' complete';
+        else cls += ' locked';
+        div.className = cls;
+        div.textContent = `${idx + 1}. ${opp.name}`;
+        campaignListEl.appendChild(div);
+      });
+    }
+
+    function updateHearts() {
+      heartsEl.innerHTML = '';
+      for (let i = 0; i < 5; i++) {
+        const h = document.createElement('span');
+        h.className = 'heart ' + (i < world.currentRomance ? 'filled' : '');
+        h.textContent = '♥';
+        heartsEl.appendChild(h);
+      }
+    }
+
+    function setRoundInfo() {
+      const op = campaign[world.roundIndex];
+      playerNameEl.textContent = 'Nova';
+      opponentNameEl.textContent = op.name;
+      opponentLabelEl.textContent = op.role;
+      world.currentRomance = world.romance[world.roundIndex];
+      connectionBox.style.display = world.currentRomance > 0 ? 'flex' : 'none';
+      updateHearts();
+      buildCampaignList();
+    }
+
+    function resetPlayers() {
+      player.x = 230;
+      player.y = 460;
+      player.vx = 0;
+      player.vy = 0;
+      player.onGround = true;
+      player.charge = 0;
+      player.spikeReady = false;
+
+      ai.x = 1050;
+      ai.y = 460;
+      ai.vx = 0;
+      ai.vy = 0;
+      ai.onGround = true;
+      ai.charge = 0;
+      ai.spikeReady = false;
+    }
+
+    function placeBallForServe() {
+      const playerServe = Math.random() < 0.5;
+      ball.x = playerServe ? 250 : 1030;
+      ball.y = 180;
+      ball.vx = 0;
+      ball.vy = 0;
+      ball.inAir = false;
+      ball.owner = playerServe ? 'player' : 'ai';
+      ball.lastHit = playerServe ? 'player' : 'ai';
+      ball.trail = [];
+      ball.spin = 0;
+      statusTextEl.textContent = playerServe ? 'Your Serve' : 'Opponent Serve';
+    }
+
+    function resetMatch() {
+      world.playerScore = 0;
+      world.opponentScore = 0;
+      world.playerWon = false;
+      playerScoreEl.textContent = '0';
+      opponentScoreEl.textContent = '0';
+      resetPlayers();
+      placeBallForServe();
+      statusTextEl.textContent = 'Serve';
+      world.gameActive = true;
+    }
+
+    function startCampaign() {
+      world.roundIndex = 0;
+      world.romance.fill(0);
+      setRoundInfo();
+      resetMatch();
+      startPanel.classList.add('hidden');
+      resultPanel.classList.add('hidden');
+      endingPanel.classList.add('hidden');
+    }
+
+    function handleInput() {
+      if (!world.gameActive) return;
+
+      if (keys['a'] || keys['arrowleft']) {
+        player.vx = -player.speed;
+        player.facing = -1;
+      } else if (keys['d'] || keys['arrowright']) {
+        player.vx = player.speed;
+        player.facing = 1;
+      } else {
+        player.vx *= 0.82;
+      }
+
+      if ((keys['w'] || keys['arrowup']) && player.onGround) {
+        player.vy = -player.jumpPower;
+        player.onGround = false;
+        keys['w'] = false;
+        keys['arrowup'] = false;
+      }
+
+      if (keys[' ']) {
+        if (!player.spikeReady) {
+          player.spikeReady = true;
+          player.charge = 0;
+        }
+        player.charge = Math.min(player.maxCharge, player.charge + 3.4);
+        statusTextEl.textContent = `Charging ${Math.min(100, Math.round((player.charge / player.maxCharge) * 100))}%`;
+      } else if (player.spikeReady) {
+        triggerSpike(player, 'player');
+        player.spikeReady = false;
+        player.charge = 0;
+      }
+
+      if (keys['r']) {
+        keys['r'] = false;
+        resetMatch();
+      }
+
+      player.x += player.vx;
+      player.x = Math.max(100, Math.min(620, player.x));
+    }
+
+    function triggerSpike(actor, team) {
+      const ratio = actor.charge / actor.maxCharge;
+      const direction = team === 'player' ? 1 : -1;
+      const basePower = 15 + ratio * 9;
+      const lift = -7.5 - ratio * 5.5;
+      const aim = team === 'player' ? 0.2 : -0.15;
+
+      if (ball.owner === team || Math.abs(ball.x - actor.x) < 80) {
+        ball.owner = null;
+        ball.lastHit = team;
+        ball.inAir = true;
+        ball.vx = direction * basePower + (Math.random() - 0.5) * 2.6;
+        ball.vy = lift + aim * 3.5;
+        ball.x = actor.x + actor.facing * 22;
+        ball.y = actor.y - 14;
+        ball.spin = 0.25 + ratio * 0.6;
+        statusTextEl.textContent = team === 'player' ? 'Spike!' : 'Blocker spike!';
+      }
+    }
+
+    function aiInput() {
+      if (!world.gameActive) return;
+      const opp = campaign[world.roundIndex];
+      const targetX = ball.inAir ? ball.x : 760;
+      const dx = targetX - ai.x;
+      const dist = Math.abs(dx);
+
+      if (dist > 18) {
+        ai.vx = Math.sign(dx || 1) * ai.speed * (1.05 + opp.difficulty * 0.08);
+      } else {
+        ai.vx *= 0.7;
+      }
+
+      if (ball.inAir && Math.abs(ball.x - ai.x) < 110 && ball.y < ai.y && ai.onGround && Math.random() < 0.2 + opp.difficulty * 0.1) {
+        ai.vy = -ai.jumpPower * 0.96;
+        ai.onGround = false;
+      }
+
+      if (ball.inAir && Math.abs(ball.x - ai.x) < 110 && Math.abs(ball.y - ai.y) < 120 && Math.random() < 0.1 + opp.difficulty * 0.08) {
+        ai.charge = Math.min(ai.maxCharge, ai.charge + 18);
+        triggerSpike(ai, 'ai');
+        ai.charge = 0;
+      }
+
+      ai.x += ai.vx;
+      ai.x = Math.max(650, Math.min(1180, ai.x));
+    }
+
+    function physics() {
+      player.vy += 0.48;
+      player.y += player.vy;
+      if (player.y >= 460) {
+        player.y = 460;
+        player.vy = 0;
+        player.onGround = true;
+      }
+
+      ai.vy += 0.48;
+      ai.y += ai.vy;
+      if (ai.y >= 460) {
+        ai.y = 460;
+        ai.vy = 0;
+        ai.onGround = true;
+      }
+
+      if (ball.owner === 'player') {
+        ball.x = player.x + 18;
+        ball.y = player.y - 18;
+      } else if (ball.owner === 'ai') {
+        ball.x = ai.x - 18;
+        ball.y = ai.y - 18;
+      }
+
+      if (ball.inAir) {
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+        ball.vy += 0.36;
+        ball.spin *= 0.985;
+
+        ball.trail.push({ x: ball.x, y: ball.y, a: 1 });
+        if (ball.trail.length > 14) ball.trail.shift();
+
+        for (const p of ball.trail) p.a *= 0.9;
+
+        // Anticipated net collision
+        if (Math.abs(ball.x - net.x) < 28 && ball.y > net.y && ball.y < net.y + net.h) {
+          ball.vx *= -0.62;
+          ball.x = net.x + (ball.vx > 0 ? 24 : -24);
+        }
+
+        // Ground contact
+        if (ball.y + ball.r >= 520) {
+          ball.y = 520 - ball.r;
+          ball.vy *= -0.32;
+          ball.vx *= 0.96;
+          if (Math.abs(ball.vy) < 1.5) {
+            ball.vy = 0;
+            ball.inAir = false;
+            resolvePoint();
+          }
+        }
+
+        // Side boundaries
+        if (ball.x < 42) {
+          ball.x = 42;
+          ball.vx = Math.abs(ball.vx) * 0.82;
+        }
+        if (ball.x > 1238) {
+          ball.x = 1238;
+          ball.vx = -Math.abs(ball.vx) * 0.82;
+        }
+
+        // Top ceiling
+        if (ball.y < 72) {
+          ball.y = 72;
+          ball.vy *= -0.64;
+        }
+
+        checkContacts();
+      }
+    }
+
+    function checkContacts() {
+      const playerReach = Math.abs(ball.x - player.x) < 42 && Math.abs(ball.y - player.y) < 68;
+      const aiReach = Math.abs(ball.x - ai.x) < 42 && Math.abs(ball.y - ai.y) < 68;
+
+      if (playerReach && ball.lastHit !== 'player') {
+        ball.lastHit = 'player';
+        ball.vx = (ball.x < player.x ? 1 : -0.8) * (9 + Math.random() * 2.5);
+        ball.vy = -5.5 - Math.random() * 2.6;
+        ball.x = player.x + 18;
+        ball.y = player.y - 12;
+      }
+
+      if (aiReach && ball.lastHit !== 'ai') {
+        ball.lastHit = 'ai';
+        ball.vx = (ball.x > ai.x ? -1 : 0.8) * (8.5 + Math.random() * 2.7);
+        ball.vy = -5.5 - Math.random() * 2.5;
+        ball.x = ai.x - 18;
+        ball.y = ai.y - 12;
+      }
+    }
+
+    function resolvePoint() {
+      const pointToPlayer = ball.x < 640;
+      if (pointToPlayer) {
+        world.opponentScore += 1;
+      } else {
+        world.playerScore += 1;
+      }
+
+      playerScoreEl.textContent = String(world.playerScore);
+      opponentScoreEl.textContent = String(world.opponentScore);
+
+      const matchOver = world.playerScore >= world.matchPoint || world.opponentScore >= world.matchPoint;
+      if (matchOver) {
+        world.gameActive = false;
+        world.playerWon = world.playerScore > world.opponentScore;
+        setTimeout(showResult, 350);
+      } else {
+        setTimeout(() => {
+          placeBallForServe();
+          world.gameActive = true;
+        }, 500);
+      }
+    }
+
+    function showResult() {
+      const opp = campaign[world.roundIndex];
+      const playerWon = world.playerWon;
+      const header = resultHeaderEl;
+      const title = resultTitleEl;
+      const text = resultTextEl;
+      const box = storyBoxEl;
+
+      if (playerWon) {
+        world.romance[world.roundIndex] = Math.min(5, world.romance[world.roundIndex] + 1);
+        world.currentRomance = world.romance[world.roundIndex];
+        header.className = 'result-header victory';
+        header.textContent = 'Victory';
+        title.textContent = `You beat ${opp.name}!`;
+        text.textContent = `Final score: ${world.playerScore} - ${world.opponentScore}. You left the court with an unmistakable spark.`;
+        box.innerHTML = `<strong>💞</strong> ${opp.win}`;
+      } else {
+        world.romance[world.roundIndex] = Math.max(0, world.romance[world.roundIndex] - 1);
+        world.currentRomance = world.romance[world.roundIndex];
+        header.className = 'result-header defeat';
+        header.textContent = 'Defeat';
+        title.textContent = `${opp.name} takes the set`;
+        text.textContent = `Final score: ${world.playerScore} - ${world.opponentScore}. The match was close, and the chemistry is impossible to ignore.`;
+        box.innerHTML = `<strong>💞</strong> ${opp.loss}`;
+      }
+
+      updateHearts();
+      resultPanel.classList.remove('hidden');
+    }
+
+    function nextRoundOrEnd() {
+      if (world.playerWon && world.roundIndex < campaign.length - 1) {
+        world.roundIndex += 1;
+        setRoundInfo();
+        resetMatch();
+        resultPanel.classList.add('hidden');
+      } else if (world.playerWon && world.roundIndex >= campaign.length - 1) {
+        resultPanel.classList.add('hidden');
+        showEnding();
+      } else {
+        resultPanel.classList.add('hidden');
+        resetMatch();
+      }
+    }
+
+    function showEnding() {
+      const totalRomance = world.romance.reduce((sum, val) => sum + val, 0);
+      const totalMatches = world.romance.length;
+      const avg = totalRomance / totalMatches;
+
+      endingTitleEl.textContent = avg >= 3 ? 'Champions in Love' : 'League Champion';
+      endingTextEl.textContent = avg >= 3
+        ? 'Your championship run became a romance story everyone could see.'
+        : 'You won the league with grit, style, and heart.';
+
+      if (avg >= 3.5) {
+        endingStoryEl.innerHTML = `<strong>💖</strong> After the final whistle, the whole locker room is buzzing. The champion trophy is in your hands, but the real prize is the way ${campaign[world.roundIndex].name} takes your hand and says, “I’ve wanted this moment for so long.” The court lights glow on the two of you as the crowd cheers. You finally kiss under the spotlight, and the season becomes a memory you’ll never let go of.`;
+      } else if (avg >= 2) {
+        endingStoryEl.innerHTML = `<strong>💫</strong> You win the league and leave with the respect of every rival. Several of them pull you aside to say how much they admire you, and you realize you’ve built something more than a record. The season was fierce, but the people were unforgettable.`;
+      } else {
+        endingStoryEl.innerHTML = `<strong>🏆</strong> The trophy is yours, and the final match feels unforgettable. The victory tastes sweet, and you carry the thrill of every rally into the night. Maybe romance can wait. For now, you are the champion.`;
+      }
+
+      endingPanel.classList.remove('hidden');
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      sky.addColorStop(0, '#1d4f69');
+      sky.addColorStop(0.45, '#1a5f67');
+      sky.addColorStop(1, '#0d3d42');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Court
+      ctx.fillStyle = '#2ca05a';
+      ctx.fillRect(50, 170, 1180, 360);
+      ctx.fillStyle = '#287d48';
+      ctx.fillRect(70, 190, 1140, 320);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.86)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(60, 180, 1160, 340);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+      ctx.setLineDash([10, 12]);
+      ctx.beginPath();
+      ctx.moveTo(640, 185);
+      ctx.lineTo(640, 500);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Net
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(net.x, net.y);
+      ctx.lineTo(net.x, net.y + net.h);
+      ctx.stroke();
+
+      for (let i = 0; i < 12; i++) {
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.fillRect(net.x - 2, net.y + 20 + i * 18, 4, 12);
+      }
+
+      // Court text / central score
+      ctx.fillStyle = 'rgba(5,25,35,0.32)';
+      ctx.fillRect(532, 34, 216, 52);
+      ctx.fillStyle = '#edf7ff';
+      ctx.font = '900 34px Inter, Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${world.playerScore} : ${world.opponentScore}`, 640, 68);
+
+      // Shadow below court
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(80, 520, 1120, 24);
+    }
+
+    function drawPlayer(actor) {
+      const x = actor.x;
+      const y = actor.y;
+      const color = actor.color;
+
+      ctx.save();
+      ctx.translate(x, y);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.beginPath();
+      ctx.ellipse(0, 52, 24, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = color;
+      ctx.fillRect(-actor.w/2, -actor.h + 10, actor.w, actor.h - 8);
+
+      ctx.fillStyle = '#f7d7b5';
+      ctx.beginPath();
+      ctx.arc(0, -actor.h + 2, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.arc(-4, -actor.h + 2, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(4, -actor.h + 2, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawBall() {
+      for (let i = 0; i < ball.trail.length; i++) {
+        const p = ball.trail[i];
+        ctx.fillStyle = `rgba(255,255,255,${0.08 + (i / ball.trail.length) * 0.22})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, ball.r * (0.55 + i * 0.04), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#f9f7ef';
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ddd7cf';
+      ctx.beginPath();
+      ctx.arc(ball.x - 4, ball.y - 4, ball.r * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function draw() {
+      drawBackground();
+      drawPlayer(player);
+      drawPlayer(ai);
+      drawBall();
+    }
+
+    function update() {
+      if (world.gameActive) {
+        handleInput();
+        aiInput();
+        physics();
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function onKeyDown(e) {
+      const key = e.key.toLowerCase();
+      keys[key] = true;
+      if ([' ', 'arrowup', 'arrowleft', 'arrowright', 'w', 'a', 'd'].includes(key)) {
+        e.preventDefault();
+      }
+    }
+
+    function onKeyUp(e) {
+      const key = e.key.toLowerCase();
+      keys[key] = false;
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+
+    document.getElementById('startButton').addEventListener('click', startCampaign);
+    document.getElementById('nextButton').addEventListener('click', nextRoundOrEnd);
+    document.getElementById('retryButton').addEventListener('click', () => {
+      resultPanel.classList.add('hidden');
+      resetMatch();
+    });
+    document.getElementById('restartButton').addEventListener('click', () => {
+      endingPanel.classList.add('hidden');
+      startPanel.classList.remove('hidden');
+      world.romance.fill(0);
+      world.roundIndex = 0;
+      setRoundInfo();
+    });
+
+    setRoundInfo();
+    buildCampaignList();
+    resetPlayers();
+    placeBallForServe();
+    loop();
+  </script>
+</body>
+</html>
